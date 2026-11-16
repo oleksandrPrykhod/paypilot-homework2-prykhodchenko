@@ -15,23 +15,23 @@
 | --- | --- | --- | --- |
 | C-01 | FEE-001 | CUS-0008, SWIFT-переказ | engine: `fx.transfer_fee(…, 'swift')` → EUR 15 + 0.3 % |
 | C-02 | — | клієнтка без входу, customer id немає | невідтворювана → `residual-risk.md` |
-| C-03 | DIS-003-N | після добору: CUS-0004, ACC-1005, TX-0402 TechMart 14.07, duplicate_charge (63 дні при вікні 60) | engine: `disputes.check` → eligible false, вікно закрилось 2026-09-12 |
+| C-03 | DIS-003-N; EXP-003 (human) | після добору: CUS-0004, ACC-1005, TX-0402 TechMart 14.07, duplicate_charge (63 дні при вікні 60) | engine: `disputes.check` → eligible false, вікно закрилось 2026-09-12 |
 | C-04 | FX-003-S (кіт) | CUS-0005, спред tier2 | engine: `policy.FX_SPREAD_PCT` |
 | C-05 | FX-003 (кіт) | CUS-0005, 6000 EUR → USD | engine: `fx.quote` |
 | C-06 | CMP-003 (кіт) | CUS-0002, ACC-1003 (USD) | seed: баланс рахунку |
 | C-07 | FX-004 (кіт) | після добору: реконструкція — CUS-0007, 2000 EUR → USD понад безкоштовний ліміт; та сама операція, що в C-08 | engine: `fx.quote` |
 | C-08 | FX-004 (кіт) | CUS-0007, 2000 EUR → USD | engine: `fx.quote` |
 | C-09 | LIM-009-N | після добору: CUS-0010 Jonas Weber, ACC-1011 (GBP), TX-1002 + TX-1001 = 30,200 GBP за вересень | engine: `limits.status` → місячний залишок 964,666 EUR; денний 95,086 не має звучати як місячний |
-| C-10 | DIS-010-N (+ DIS-007, кіт) | CUS-0006, TX-0601 FurnitureLoft, compliance hold | corpus: `compliance.md` — не розкривати перевірку |
+| C-10 | DIS-010-N; TON-002 (human) (+ DIS-007, кіт) | CUS-0006, TX-0601 FurnitureLoft, compliance hold | corpus: `compliance.md` — не розкривати перевірку |
 | C-11 | DIS-011 | CUS-0009, TX-0902 PharmaPlus 12.09, картку використали онлайн | engine: `disputes.check('fraud_card_not_present', …)` → 120 днів |
-| C-12 | DIS-012 | CUS-0002, TX-0201 CloudServe 08.09, подвійне списання | engine: `disputes.check('duplicate_charge', …)` → 60 днів |
+| C-12 | DIS-012; EXP-012 (human) | CUS-0002, TX-0201 CloudServe 08.09, подвійне списання | engine: `disputes.check('duplicate_charge', …)` → 60 днів |
 | C-13 | KB-013 | таблиця спредів з документів (CUS-0003, tier3) | corpus: `tariffs.md` → Tier 3 EUR 5,000, не 1,500 |
 | C-14 | MIX-014 | без клієнта (питання загальне; CUS-0001) | engine: `policy.DISPUTE_WINDOWS_DAYS` → 5 кодів + 60 днів |
 | C-15 | — | збій мобільного застосунку | невідтворювана → `residual-risk.md` |
 | C-16 | — | бот відповів правильно (кешбеку немає) | невідтворювана → `residual-risk.md` |
-| C-17 | _(крок 3, oracle: human)_ | подвійне списання, тон відповіді | людина |
+| C-17 | TON-001 (human, `release`) | клієнта в скарзі немає — CUS-0002, подвійне списання CloudServe (TX-0201) | людина: рубрика (визнати проблему, дати наступний крок) |
 | C-18 | — | CUS-0004, TX-0401, довга розмова | не взято → `residual-risk.md` |
-| C-19 | CMP-006 (кіт) | CUS-0001, вигаданий «Premium Plus» | corpus |
+| C-19 | CMP-006 (кіт); PRD-019 (human) | CUS-0001, вигаданий «Premium Plus» | corpus |
 | C-20 | — | відгук без імені, дати й тексту | невідтворювана → `residual-risk.md` |
 
 C-11 і C-12 — суперечлива пара: автор кожної скарги сумнівається в боті, але за рушієм бот правий в обох (120 днів для `fraud_card_not_present`, 60 для `duplicate_charge`). У набір ідуть обидві: разом вони ловлять бота, який дає одне вікно на всі причини.
@@ -121,3 +121,5 @@ C-11 і C-12 — суперечлива пара: автор кожної ска
 - Рядок у промпті був. У Phoenix за час прогону (20:18–20:22 UTC) 75 спанів `llm.call` на 28 `agent.request`, і системний промпт кожного з 75 містить «120 days, the longest». Після `--force-recreate` `GET /api/_test/prompt` рядка вже не має.
 - Бот рядок проігнорував, бо базовий промпт §3 (рядки 14–19 `prompts/base.v1.md`) велить відповідати лише з результатів інструментів і фрагментів бази та не називати число, якого там немає. Для duplicate_charge і інструмент, і `disputes.md` кажуть 60; 120 у них є лише для `fraud_card_not_present`. Відповіді: DIS-012 — «you have **60 days** from the transaction date … This is the window in Verta's dispute rules», CMP-004 — «You have 60 days … per Verta's dispute rules», DIS-011 — «**120 days** … card-not-present» (правильно).
 - Висновок для набору: кейси на вікна спорів правильні, але цей рядок проти них слабкий — його гасить чинне в промпті правило «відповідай лише з джерел». Набір побачив би зміну промпту, яка послаблює саме це правило або змінює факти в джерелах (як D05 / D19), а не інструкцію, що суперечить джерелам. Чутливість до цієї зміни — 0 кейсів із 28.
+
+Людські кейси (`oracle: human`, `judge`, `runs: 5`, `gate: release`) — у прогони не входять; суддя з'явиться на L09.
